@@ -223,6 +223,62 @@ function EntityParameterValidationDefinitionHelper(parameter: MongoSchemaParamet
       }
       validators.push(r)
     }
+  } else if (parameter.type == MongoDataType.ARRAY) {
+    // type
+    let t = (value) => {
+      if (Array.isArray(value) || value === null || value === undefined) {
+        return {success: true}
+      } else {
+        return {success: false, message: MongoValidationError.INVALID_TYPE}
+      }
+    }
+    validators.push(t)
+
+    // required
+    if (parameter.required === true) {
+      let r = (value) => {
+        if (value === null || value === undefined || value.length == 0) {
+          return {success: false, message: MongoValidationError.REQUIRED}
+        } else {
+          return {success: true}
+        }
+      }
+      validators.push(r)
+    }
+  } else if (parameter.type == MongoDataType.MIXED) {
+    // required
+    if (parameter.required === true) {
+      let r = (value) => {
+        if (value === null || value === undefined) {
+          return {success: false, message: MongoValidationError.REQUIRED}
+        } else {
+          return {success: true}
+        }
+      }
+      validators.push(r)
+    }
+  } else if (parameter.type == MongoDataType.OBJECT_ID) {
+    // type
+    let t = (value) => {
+      if (value instanceof ObjectId || typeof value == "string" || value === null || value === undefined) {
+        return {success: true}
+      } else {
+        return {success: false, message: MongoValidationError.INVALID_TYPE}
+      }
+    }
+    validators.push(t)
+
+    // required
+    if (parameter.required === true) {
+      let r = (value) => {
+        if (value === null || value === undefined || value.length == 0) {
+          return {success: false, message: MongoValidationError.REQUIRED}
+        } else {
+          return {success: true}
+        }
+      }
+      validators.push(r)
+    }
   }
   return validators
 }
@@ -337,6 +393,18 @@ export class MongoEntity {
         }
       }
     }
+  }
+
+  async validate(db: MongoConnector) {
+    
+  }
+
+  async insert(db: MongoConnector) {
+    
+
+    let _db = db.connection.db(db.getName()).collection((this.constructor as any).getCollectionName())
+    let schema = (this.constructor as any).getSchema()
+
   }
 
   static async Find(db: MongoConnector, where?: MongoWhereOptions, opts?: MongoEntityFindOptions): Promise<MongoEntity[]> {

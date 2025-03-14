@@ -7,3 +7,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.0] 2025-03-02
 ### Added
 * Mongo Connector Service.
+* Mongo Entity
+* Mongo Core Error, Mongo Not Found Error
