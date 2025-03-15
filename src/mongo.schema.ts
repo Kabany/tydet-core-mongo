@@ -3,7 +3,7 @@ import { DateUtils, StringUtils } from "tydet-utils"
 import { v1, v4 } from "uuid"
 import { MongoConnector } from "./mongo.service"
 import { MongoEntityFindOptions, MongoEntityUpdateAction, MongoWhereOptions } from "./mongo.query"
-import { MongoCoreError, MongoEntityNotFound } from "./mongo.error"
+import { MongoCoreError, MongoEntityNotFoundError, MongoEntityValidationError } from "./mongo.error"
 
 export enum MongoDataType {
   OBJECT_ID = "OBJECT_ID",
@@ -58,7 +58,7 @@ interface MongoSchemaNumberParameterDefinition extends MongoSchemaParameterDefin
   max?: number
 }
 
-interface MongoParameterValidation {
+export interface MongoParameterValidation {
   success: boolean
   message?: string
 }
@@ -297,7 +297,7 @@ export class MongoEntity {
     return []
   }
 
-  static DefineSchema(name: string, schema: {[params:string]: MongoDataType | MongoSchemaParameterDefinition}) {
+  static DefineSchema(name: string, schema: {[params:string]: MongoDataType | MongoSchemaParameterDefinition | MongoSchemaNumberParameterDefinition | MongoSchemaStringParameterDefinition}) {
     this.getCollectionName = () => {
       return name
     }
@@ -326,9 +326,10 @@ export class MongoEntity {
             required: data.required === true,
             alias: data.alias || param,
             unique: data.unique === true,
-            validators: data.validators || []
+            validators: []
           }
           parameter.validators.push(...EntityParameterValidationDefinitionHelper(parameter, data))
+          parameter.validators.push(...(data.validators || []))
           parameters.push(parameter)
         }
       }
@@ -338,7 +339,7 @@ export class MongoEntity {
     }
   }
 
-  constructor(data: any, options: MongoEntityOptions) {
+  constructor(data: any, options?: MongoEntityOptions) {
     let opts = options || {readAlias: false}
     let schema = (this.constructor as any).getSchema()
     if (data._id != null) {
@@ -395,19 +396,80 @@ export class MongoEntity {
     }
   }
 
-  async validate(db: MongoConnector) {
-    
+  async validate(db: MongoConnector, options: {insert: boolean} = {insert: false}) {
+    let schema = (this.constructor as any).getSchema()
+    let errors: any = {}
+    for await (let parameter of schema) {
+      for (let validation of parameter.validators) {
+        let result = validation(this[parameter.name])
+        if (result === true || (result as MongoParameterValidation).success == true) {
+          // OK
+        } else if (result === false) {
+          errors[parameter.name] = MongoValidationError.INVALID_VALUE
+          break
+        } else if ((result as MongoParameterValidation).success == false) {
+          errors[parameter.name] = (result as MongoParameterValidation).message ? (result as MongoParameterValidation).message : MongoValidationError.INVALID_VALUE
+          break
+        }
+      }
+      if (errors[parameter.name] == null && parameter.unique === true) {
+        let where = {}
+        where[parameter.alias] = this[parameter.name]
+        if (!options.insert) {
+          where["_id"] = {"$ne": this._id}
+        }
+        let exist = await (this.constructor as any).FindOne(db, where)
+        if (exist != null) {
+          errors[parameter.name] = MongoValidationError.UNIQUE
+        }
+      } else if (errors[parameter.name] == MongoValidationError.REQUIRED && parameter.name == "_id" && options.insert) {
+        // skip
+        delete errors[parameter.name]
+      }
+    }
+    return errors
   }
 
   async insert(db: MongoConnector) {
-    
+    let errors = await this.validate(db, {insert: true})
+    if (Object.keys(errors).length > 0) {
+      throw new MongoEntityValidationError("Some errors were found in the entity", errors)
+    }
 
     let _db = db.connection.db(db.getName()).collection((this.constructor as any).getCollectionName())
     let schema = (this.constructor as any).getSchema()
-
+    let _doc: any = {}
+    for (let param of schema) {
+      _doc[param.alias] = this[param.name]
+    }
+    let result = await _db.insertOne(_doc)
+    this._id = result.insertedId
+    return result.insertedId
   }
 
-  static async Find(db: MongoConnector, where?: MongoWhereOptions, opts?: MongoEntityFindOptions): Promise<MongoEntity[]> {
+  async update(db: MongoConnector) {
+    let errors = await this.validate(db)
+    if (Object.keys(errors).length > 0) {
+      throw new MongoEntityValidationError("Some errors were found in the entity", errors)
+    }
+
+    let _db = db.connection.db(db.getName()).collection((this.constructor as any).getCollectionName())
+    let schema = (this.constructor as any).getSchema()
+    let _doc: any = {}
+    for (let param of schema) {
+      _doc[param.alias] = this[param.name]
+    }
+    let result = await _db.updateOne({"_id": this._id as ObjectId}, {"$set": _doc})
+    return result.modifiedCount
+  }
+
+  async remove(db: MongoConnector) {
+    let _db = db.connection.db(db.getName()).collection((this.constructor as any).getCollectionName())
+    let result = await _db.deleteOne({_id: this._id as ObjectId})
+    return result.deletedCount
+  }
+
+  static async Find(db: MongoConnector, where?: MongoWhereOptions, opts?: MongoEntityFindOptions): Promise<any[]> {
     let _db = db.connection.db(db.getName()).collection(this.getCollectionName())
     let _w = where || {}
     let _opts = opts || {}
@@ -444,8 +506,10 @@ export class MongoEntity {
       cursor.sort(sort)
     }
 
-    if (_opts.limit != null) {
+    if (_opts.limit == null) {
       _opts.limit = {page: 1, per: 1000}
+    } else if (_opts.limit.per > 1000) {
+      _opts.limit.per = 1000
     }
     cursor.skip((_opts.limit.per * (_opts.limit.page - 1))).limit(_opts.limit.per)
 
@@ -457,7 +521,7 @@ export class MongoEntity {
     return list
   }
 
-  static async FindOne(db: MongoConnector, where?: MongoWhereOptions, opts?: MongoEntityFindOptions): Promise<MongoEntity> {
+  static async FindOne(db: MongoConnector, where?: MongoWhereOptions, opts?: MongoEntityFindOptions): Promise<any> {
     let _db = db.connection.db(db.getName()).collection(this.getCollectionName())
     let _w = where || {}
     let _opts = opts || {}
@@ -508,7 +572,7 @@ export class MongoEntity {
       return result
     } else {
       let collection = this.getCollectionName()
-      throw new MongoEntityNotFound("Entity not found", collection, where)
+      throw new MongoEntityNotFoundError("Entity not found", collection, where)
     }
   }
 

@@ -17,18 +17,30 @@ export class MongoCoreError extends CoreError {
   }
 }
 
-export class MongoEntityNotFound extends MongoCoreError {
+export class MongoEntityNotFoundError extends MongoCoreError {
   name: string
-  errors: any
   collection: string
   where: any
 
   constructor(message: string, collection: string, where: MongoWhereOptions) {
     super(message);
-    this.name = "MongoEntityNotFound";
+    this.name = "MongoEntityNotFoundError";
     this.message = message + ` -- Collection: ${collection}, where: ${where}`;
     this.collection = collection;
     this.where = where;
+    this.stack = (new Error(message)).stack;  //`${this.message}\n${new Error().stack}`;
+  }
+}
+
+export class MongoEntityValidationError extends MongoCoreError {
+  name: string
+  errors: any
+
+  constructor(message: string, errors: any) {
+    super(message);
+    this.name = "MongoEntityValidationError";
+    this.message = message
+    this.errors = errors
     this.stack = (new Error(message)).stack;  //`${this.message}\n${new Error().stack}`;
   }
 }

@@ -8,4 +8,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * Mongo Connector Service.
 * Mongo Entity
-* Mongo Core Error, Mongo Not Found Error
+* Mongo Core Error, Mongo Not Found Error. Mongo Entity Validation Error

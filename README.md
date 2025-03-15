@@ -19,65 +19,52 @@ It is required to install [TyDeT Core][tydet-core] to use this module.
 
 ```js
 import { Context } from 'tydet-core';
-import { MysqlConnector, MysqlEntity, QueryFind } from 'tydet-core-mysql';
+import { MongoConnector, MongoEntity, QueryFind } from 'tydet-core-mongo';
 
 // Add connector as Service
 let app = new Context()
-let mysql = new MysqlConnector()
-await app.mountService("mysql", mysql)
+let mongodb = new MongoConnector()
+await app.mountService("mongo", mongodb)
 
 // Execute queries
-let query = QueryFind(mysql, "users", {firstName: "My name"})
-let data = await mysql.run(query)
+let query = QueryFind(mongodb, "users", {firstName: "My name"})
+let data = await mongodb.run(query)
 
 // Define entities
-class User extends MysqlEntity {
-  id: number
+class User extends MongoEntity {
   firstName: string
   lastName: string
 }
 
 User.DefineSchema("users", {
-  id: {
-    type: MysqlDataType.INT,
-    primaryKey: true
-  },
   firstName: {
-    type: MysqlDataType.VARCHAR,
+    type: MongoDataType.STRING,
     required: true
   },
-  lastName: MysqlDataType.VARCHAR
+  lastName: MongoDataType.STRING
 })
 
-class Comment extends MysqlEntity {
-  id: number
+class Comment extends MongoEntity {
   message: string
-  userId: number
+  userId: ObjectId
   createdAt: Date
 
   user?: User
 }
 
 Comment.DefineSchema("comments", {
-  id: {
-    type: MysqlDataType.INT,
-    primaryKey: true
-  },
   message: {
-    type: MysqlDataType.VARCHAR,
+    type: MongoDataType.VARCHAR,
     required: true
   },
-  userId: MysqlDataType.INT,
+  userId: MongoDataType.OBJECT_ID,
   createdAt: {
-    type: MysqlDataType.DATETIME,
-    default: MysqlDefaultValue.NOW
+    type: MongoDataType.DATETIME,
+    default: MongoDataType.NOW
   }
 })
 
-User.hasMany(Comment, "userId")
-Comment.belongsTo(User, "userId", "user")
-
-let users = await User.Find(mysql, {firstName: "My name"})
+let users = await User.Find(mongodb, {firstName: "My name"})
 
 ```
 
@@ -93,7 +80,7 @@ Check the [docs][docs] for more details about the service.
 
 ## Contributing
 
-We'd love for you to contribute to TyAPI Core Mysql and help make it even better than it is today! Find out how you can contribute [here][contribute].
+We'd love for you to contribute to TyAPI Core Mongo and help make it even better than it is today! Find out how you can contribute [here][contribute].
 
 
 
