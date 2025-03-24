@@ -1,6 +1,6 @@
 {
   "name": "tydet-core-mongo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TyDeT Core Mongo is a Typescript & Javascript library for TyDeT Core to handle connections with a Mongo Database.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
