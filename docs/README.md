@@ -443,3 +443,28 @@ let where = {name: {"$nin": ["Luis", "Miguel", "David", "Alejandro"]}} // name N
 ```
 
 For more operators, check the [MongoDB Documentation](https://www.mongodb.com/docs/manual/reference/operator/query/#std-label-query-selectors) for more information.
+
+
+### Mongo Callbacks
+
+The are some callbacks that you can define on the configuration of this service. The callbacks are called for the following events:
+
+#### `onConnected(dbNAme: string, host: string, port: number, service: MongoConnector, context: Context) => void`
+
+- **dbName**: The DB name defined in the connection settings
+- **host**: The host defined in the connection settings
+- **port**: The port defined in the connection settings
+- **service**: The Mongo Connector Service.
+- **context**: The TyDeT Context.
+
+This callback is executed when the Mongo connection is ready.
+
+#### `onDisconnected(dbName: string, host: string, port: number, service: MongoConnector, context: Context) => void`
+
+- **dbName**: The DB name defined in the connection settings
+- **host**: The host defined in the connection settings
+- **port**: The port defined in the connection settings
+- **service**: The Mongo Connector Service.
+- **context**: The TyDeT Context.
+
+This callback is executed when the Mongo connection is closed.

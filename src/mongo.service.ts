@@ -23,12 +23,7 @@ export interface MongoParamsInterface {
   options?: string
 }
 
-export type MongoStatusCallback = (configurations: {
-  host: string,
-  port: string,
-  database: string,
-  user?: string
-}) => void
+export type MongoStatusCallback = (dbName: string, host: string, port: number, service: MongoConnector, context: Context) => void
 
 export class MongoConnector extends Service {
   connection: MongoClient
@@ -50,26 +45,10 @@ export class MongoConnector extends Service {
 
   async connect() {
     this.connection = new MongoClient(this.params.get(DB_URL))
-    if (this.onConnected != null) {
-      this.onConnected({
-        host: this.params.get(DB_HOST),
-        port: this.params.get(DB_PORT),
-        database: this.params.get(DB_NAME),
-        user: this.params.get(DB_USER)
-      })
-    }
   }
 
   async disconnect() {
     await this.connection.close()
-    if (this.onDisconnected != null) {
-      this.onDisconnected({
-        host: this.params.get(DB_HOST),
-        port: this.params.get(DB_PORT),
-        database: this.params.get(DB_NAME),
-        user: this.params.get(DB_USER)
-      })
-    }
   }
 
   override async beforeMount(context: Context) {
@@ -91,10 +70,70 @@ export class MongoConnector extends Service {
 
   override async onMount() {
     await this.connect()
+    await super.onMount()
   }
 
-  override async beforeUnmount() {
+  override async afterMount() {
+    if (this.onConnected != null) {
+      this.onConnected(
+        this.params.get(DB_NAME),
+        this.params.get(DB_HOST),
+        this.params.get(DB_PORT) as number,
+        this,
+        this.context
+      )
+    }
+    await super.afterMount()
+  }
+
+  override async beforeReset() {
     await this.disconnect()
+    if (this.onDisconnected != null) {
+      this.onDisconnected(
+        this.params.get(DB_NAME),
+        this.params.get(DB_HOST),
+        this.params.get(DB_PORT) as number,
+        this,
+        this.context
+      )
+    }
+    await super.beforeReset()
+  }
+
+  override async onReset() {
+    await this.connect()
+    await super.onReset()
+  }
+
+  override async afterReset() {
+    if (this.onConnected != null) {
+      this.onConnected(
+        this.params.get(DB_NAME),
+        this.params.get(DB_HOST),
+        this.params.get(DB_PORT) as number,
+        this,
+        this.context
+      )
+    }
+    await super.afterReset()
+  }
+
+  override async onEject() {
+    await this.disconnect()
+    await super.onEject()
+  }
+
+  override async afterEject() {
+    if (this.onDisconnected != null) {
+      this.onDisconnected(
+        this.params.get(DB_NAME),
+        this.params.get(DB_HOST),
+        this.params.get(DB_PORT) as number,
+        this,
+        this.context
+      )
+    }
+    await super.afterEject()
   }
 
   getName() {

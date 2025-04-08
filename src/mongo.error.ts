@@ -2,45 +2,40 @@ import { CoreError } from "tydet-core";
 import { MongoWhereOptions } from "./mongo.query";
 
 export class MongoCoreError extends CoreError {
-  name: string
-  sql: string
 
-  constructor(message?: string, sql?: string) {
-    super(message);
-    this.name = "MongoCoreError";
+  constructor(message?: string) {
+    super();
+    Object.setPrototypeOf(this, MongoCoreError.prototype);
+    this.name = this.constructor.name
     this.message = message;
-    this.sql = sql;
-    if (sql != null && message != null) {
-      this.message += `\nQuery: ${this.sql}`
-    }
-    this.stack = (new Error(this.message)).stack;  //`${this.message}\n${new Error().stack}`;
+    if (Error.captureStackTrace) Error.captureStackTrace(this, MongoCoreError);
   }
 }
 
 export class MongoEntityNotFoundError extends MongoCoreError {
-  name: string
   collection: string
   where: any
 
   constructor(message: string, collection: string, where: MongoWhereOptions) {
-    super(message);
-    this.name = "MongoEntityNotFoundError";
+    super();
+    Object.setPrototypeOf(this, MongoEntityNotFoundError.prototype);
+    this.name = this.constructor.name
     this.message = message + ` -- Collection: ${collection}, where: ${where}`;
     this.collection = collection;
     this.where = where;
-    this.stack = (new Error(message)).stack;  //`${this.message}\n${new Error().stack}`;
+    if (Error.captureStackTrace) Error.captureStackTrace(this, MongoEntityNotFoundError);
   }
 }
 
 export class MongoEntityValidationError extends MongoCoreError {
-  name: string
   errors: any
 
   constructor(message: string, errors: any) {
-    super(message);
-    this.name = "MongoEntityValidationError";
+    super();
+    Object.setPrototypeOf(this, MongoEntityValidationError.prototype);
+    this.name = this.constructor.name
     this.message = message
     this.errors = errors
-    this.stack = (new Error(message)).stack;  //`${this.message}\n${new Error().stack}`;
+    if (Error.captureStackTrace) Error.captureStackTrace(this, MongoEntityValidationError);
   }
 }
